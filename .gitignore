@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# 本地数据库（含树洞帖子，不公开）
+breaktime.db
+*.db
+
+# 环境变量（含密钥，绝不入库）
+.env
+
+# OS
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
