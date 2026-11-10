@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Break — 30秒休息一下（离线版）</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
+    background: #fafaf7; color: #333; height: 100vh; overflow: hidden; display: flex;
+  }
+  .main {
+    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 40px; position: relative;
+    background: linear-gradient(135deg, #fafaf7 0%, #f0ede6 100%);
+  }
+  .main-text {
+    font-size: clamp(32px, 5vw, 56px); font-weight: 300; line-height: 1.4;
+    max-width: 600px; text-align: center; cursor: pointer;
+    background: rgba(255,255,255,0.7); padding: 30px 40px; border-radius: 24px;
+    backdrop-filter: blur(8px); box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+  }
+  .hint { margin-top: 24px; font-size: 13px; color: #888; background: rgba(255,255,255,0.6); padding: 6px 14px; border-radius: 12px; }
+  .top-btns { position: absolute; top: 24px; left: 24px; display: flex; gap: 8px; }
+  .top-btn {
+    padding: 8px 16px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.8);
+    background: rgba(255,255,255,0.8); cursor: pointer; font-size: 14px; color: #666;
+    backdrop-filter: blur(8px); box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  }
+  .wall { width: 320px; background: #f5f5f2; border-left: 1px solid #e8e8e5; display: flex; flex-direction: column; }
+  .wall-header { padding: 16px 20px; border-bottom: 1px solid #e8e8e5; display: flex; justify-content: space-between; align-items: center; }
+  .wall-title { font-size: 13px; color: #999; }
+  .post-btn { padding: 4px 12px; border-radius: 12px; border: none; background: #333; color: #fff; font-size: 12px; cursor: pointer; }
+  .wall-scroll { flex: 1; overflow-y: auto; }
+  .wall-item { padding: 14px 20px; font-size: 14px; line-height: 1.5; border-bottom: 1px solid #ececea; cursor: pointer; }
+  .wall-item:hover { background: #fff; }
+  .wall-item .author { font-size: 11px; margin-top: 4px; opacity: 0.7; }
+  .wall-item.c1 { background: #fff5f5; } .wall-item.c2 { background: #f0f9ff; }
+  .wall-item.c3 { background: #f0fdf4; } .wall-item.c4 { background: #fefce8; } .wall-item.c5 { background: #faf5ff; }
+  .panel {
+    width: 320px; background: #fff; border-right: 1px solid #e8e8e5; display: flex; flex-direction: column;
+    transform: translateX(-100%); transition: transform 0.3s; position: absolute; left: 0; top: 0; bottom: 0; z-index: 100;
+    box-shadow: 2px 0 12px rgba(0,0,0,0.08);
+  }
+  .panel.open { transform: translateX(0); }
+  .panel-header { padding: 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+  .panel-header h2 { font-size: 16px; font-weight: 600; }
+  .close-btn { background: none; border: none; font-size: 20px; cursor: pointer; color: #999; }
+  .panel-body { flex: 1; overflow-y: auto; padding: 16px 20px; }
+  .cat-btn { padding: 4px 12px; border-radius: 14px; border: 1px solid #ddd; background: #fff; cursor: pointer; font-size: 12px; color: #666; margin: 2px; }
+  .cat-btn.active { background: #333; color: #fff; border-color: #333; }
+  .lib-item { padding: 12px; margin-bottom: 10px; background: #fafaf7; border-radius: 10px; border: 1px solid #eee; cursor: pointer; }
+  .lib-item .title { font-size: 14px; font-weight: 500; margin-bottom: 4px; }
+  .lib-item .source { font-size: 11px; color: #999; }
+  .setting-item { margin-bottom: 20px; }
+  .setting-item label { display: block; font-size: 13px; color: #666; margin-bottom: 6px; }
+  .setting-item input { width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
+  .save-btn { margin: 0 20px 20px; padding: 10px; border: none; border-radius: 8px; background: #333; color: #fff; font-size: 14px; cursor: pointer; }
+  .my-item { padding: 12px; margin-bottom: 10px; background: #fafaf7; border-radius: 10px; border: 1px solid #eee; }
+  .my-item .text { font-size: 14px; margin-bottom: 6px; }
+  .my-item .meta { font-size: 11px; color: #999; }
+  .delete-btn { margin-top: 8px; padding: 4px 10px; border: 1px solid #ddd; border-radius: 6px; background: #fff; font-size: 11px; cursor: pointer; color: #999; }
+  .my-tabs { display: flex; border-bottom: 1px solid #eee; }
+  .my-tab { flex: 1; padding: 10px; text-align: center; font-size: 13px; cursor: pointer; color: #888; border-bottom: 2px solid transparent; }
+  .my-tab.active { color: #333; border-bottom-color: #333; }
+  .fish-float {
+    position: fixed; bottom: 24px; right: 24px; z-index: 300; background: #fff; border-radius: 16px;
+    padding: 12px 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.12); display: flex; align-items: center; gap: 10px;
+    cursor: move; user-select: none;
+  }
+  .fish-float.hidden { display: none; }
+  .fish-float .cat { font-size: 32px; line-height: 1; }
+  .fish-float .info { font-size: 12px; color: #666; line-height: 1.4; }
+  .fish-float .time { font-size: 18px; font-weight: 600; color: #333; font-variant-numeric: tabular-nums; }
+  .fish-float .close-float { position: absolute; top: 4px; right: 8px; background: none; border: none; font-size: 14px; color: #ccc; cursor: pointer; line-height: 1; }
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.3); display: none; align-items: center; justify-content: center; z-index: 200; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: #fff; border-radius: 16px; padding: 24px; width: 420px; max-width: 90vw; max-height: 80vh; display: flex; flex-direction: column; }
+  .modal h3 { font-size: 16px; margin-bottom: 16px; }
+  .modal textarea { width: 100%; height: 80px; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; resize: none; margin-bottom: 12px; }
+  .anon-row { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; font-size: 13px; color: #666; }
+  .modal-btns { display: flex; gap: 8px; justify-content: flex-end; }
+  .modal-btns button { padding: 8px 16px; border-radius: 8px; border: 1px solid #ddd; background: #fff; cursor: pointer; font-size: 14px; }
+  .modal-btns button.primary { background: #333; color: #fff; border-color: #333; }
+  .detail-post { padding: 12px; background: #fafaf7; border-radius: 10px; margin-bottom: 16px; }
+  .detail-post .text { font-size: 15px; line-height: 1.5; margin-bottom: 6px; }
+  .detail-post .author { font-size: 12px; color: #999; }
+  .reply-list { flex: 1; overflow-y: auto; margin-bottom: 12px; }
+  .reply-item { padding: 10px 12px; margin-bottom: 8px; background: #f9f9f6; border-radius: 8px; font-size: 13px; }
+  .reply-item .author { font-size: 11px; color: #999; margin-top: 4px; }
+  .reply-input-row { display: flex; gap: 8px; }
+  .reply-input-row input { flex: 1; padding: 8px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 13px; }
+  .reply-input-row button { padding: 8px 14px; border: none; border-radius: 8px; background: #333; color: #fff; cursor: pointer; font-size: 13px; }
+</style>
+</head>
+<body>
+
+<!-- 鱼库 -->
+<div class="panel" id="library">
+  <div class="panel-header"><h2>🐟 鱼库</h2><button class="close-btn" onclick="togglePanel('library')">×</button></div>
+  <div id="catList" style="padding:12px 20px;border-bottom:1px solid #f0f0ee"></div>
+  <div class="panel-body" id="libraryList"></div>
+  <button class="save-btn" onclick="openAddLinkModal()">+ 丢一个链接</button>
+</div>
+
+<div class="modal-overlay" id="addLinkModal">
+  <div class="modal">
+    <h3>🎣 丢一个链接</h3>
+    <div class="setting-item"><label>网址（必填）</label><input type="text" id="linkUrl" placeholder="https://figma.com"></div>
+    <div class="setting-item"><label>名字（选填，默认用域名）</label><input type="text" id="linkTitle" placeholder="比如：Figma"></div>
+    <div class="setting-item"><label>分类（选填）</label><input type="text" id="linkCat" placeholder="比如：设计 / 工具 / 阅读"></div>
+    <div class="modal-btns"><button onclick="closeModal('addLinkModal')">取消</button><button class="primary" onclick="addLink()">丢进去</button></div>
+  </div>
+</div>
+
+<!-- 设置 -->
+<div class="panel" id="settings">
+  <div class="panel-header"><h2>⚙️ 设置</h2><button class="close-btn" onclick="togglePanel('settings')">×</button></div>
+  <div class="panel-body">
+    <div class="setting-item"><label>你的昵称</label><input type="text" id="settingNick" placeholder="比如：摸鱼学家"></div>
+    <div class="setting-item"><label>B站 UID</label><input type="text" id="settingBilibiliUid" placeholder="比如：12345678"></div>
+    <div class="setting-item"><label>微信读书书架链接</label><input type="text" id="settingWeread" placeholder="https://weread.qq.com/web/shelf"></div>
+    <div class="setting-item"><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="settingFishFloat" checked style="width:auto">显示摸鱼计时浮窗</label></div>
+    <div class="setting-item"><label>自定义壁纸</label><input type="file" id="settingWallpaper" accept="image/*" style="font-size:13px"></div>
+    <div class="setting-item" style="margin-top:8px"><button class="delete-btn" onclick="resetWallpaper()" style="width:100%;padding:8px">恢复默认壁纸</button></div>
+  </div>
+  <button class="save-btn" onclick="saveSettings()">保存设置</button>
+</div>
+
+<!-- 我的 -->
+<div class="panel" id="mypanel">
+  <div class="panel-header"><h2>👤 我的</h2><button class="close-btn" onclick="togglePanel('mypanel')">×</button></div>
+  <div class="my-tabs"><div class="my-tab active" onclick="switchMyTab('posts', this)">我发的</div><div class="my-tab" onclick="switchMyTab('replies', this)">我跟的</div></div>
+  <div class="panel-body" id="myContent"></div>
+</div>
+
+<!-- 主区域 -->
+<div class="main">
+  <div class="top-btns">
+    <button class="top-btn" onclick="togglePanel('library')">🐟 鱼库</button>
+    <button class="top-btn" onclick="togglePanel('mypanel')">👤 我的</button>
+    <button class="top-btn" onclick="togglePanel('settings')">⚙️ 设置</button>
+  </div>
+  <div class="main-text" id="mainText" onclick="randomBreak()">喝口水吧 💧</div>
+  <div class="hint">点一下换一条</div>
+</div>
+
+<!-- 树洞 -->
+<div class="wall">
+  <div class="wall-header"><div class="wall-title">树洞 · 大家在想什么</div><button class="post-btn" onclick="openPostModal()">+ 发一条</button></div>
+  <div class="wall-scroll" id="wallScroll"><div id="wallList"></div></div>
+</div>
+
+<div class="modal-overlay" id="postModal">
+  <div class="modal">
+    <h3>📝 发一条树洞</h3>
+    <textarea id="postText" placeholder="说点什么…"></textarea>
+    <div class="anon-row"><input type="checkbox" id="postAnon"><label for="postAnon">匿名发布</label></div>
+    <div class="modal-btns"><button onclick="closeModal('postModal')">取消</button><button class="primary" onclick="submitPost()">发布</button></div>
+  </div>
+</div>
+
+<div class="fish-float" id="fishFloat">
+  <button class="close-float" onclick="toggleFishFloat(false)">×</button>
+  <div class="cat">🐱</div>
+  <div class="info"><div>已摸鱼</div><div class="time" id="fishTime">00:00</div></div>
+</div>
+
+<div class="modal-overlay" id="detailModal">
+  <div class="modal">
+    <h3>跟帖</h3>
+    <div class="detail-post" id="detailPost"></div>
+    <div class="reply-list" id="replyList"></div>
+    <div class="reply-input-row"><input type="text" id="replyInput" placeholder="写条跟帖…"><button onclick="submitReply()">发送</button></div>
+    <div class="modal-btns" style="margin-top:12px"><button onclick="closeModal('detailModal')">关闭</button></div>
+  </div>
+</div>
+
+<script>
+const breaks = [
+  "喝口水吧 💧", "站起来走 30 秒 🚶", "看窗外那棵树 🌳",
+  "找找窗外有没有小鸟 🐦", "伸个懒腰 🤸", "闭上眼睛休息 20 秒 😌",
+  "转转脖子 🧘", "深呼吸三次 🌬️", "看看远处，让眼睛放松 👀",
+  "去倒杯水，顺便上个厕所 🚻", "想想今天晚上吃什么 🍜",
+  "把工位收拾一下 🧹", "听听窗外的声音 🎧", "双手举过头顶，拉伸 🙆", "发 5 秒钟呆 ✨",
+];
+
+let wallData = [
+  { id: 1001, text: "今天学了20分钟哲学，感觉脑子转起来了", author: "摸鱼学家", mine: true, likes: 2, replies: [
+    { text: "真棒，我今天还没开始学", author: "路人甲" },
+    { text: "20分钟也不错，慢慢来", author: "路人乙" },
+  ]},
+  { id: 1, text: "今天又在摸鱼，但摸得很安心", author: "摸鱼学家", mine: true, likes: 1, replies: [
+    { text: "摸鱼也是一种生产力", author: "路人甲" },
+  ]},
+  { id: 2, text: "这个 bug 改了三小时，最后发现是少了个分号", author: "debugger", mine: false, likes: 5, replies: [] },
+  { id: 3, text: "需求又变了，但我已经习惯了", author: "产品经理", mine: false, likes: 3, replies: [
+    { text: "我们也一样，需求一周改三次", author: "后端开发" },
+  ]},
+  { id: 4, text: "好想退休啊", author: "不想上班", mine: false, likes: 8, replies: [] },
+];
+
+let config = { nick: "摸鱼学家", bilibiliUid: "", wereadUrl: "https://weread.qq.com/web/shelf", fishFloat: true };
+let myRepliedIds = [];
+let currentDetailId = null;
+let currentMyTab = 'posts';
+let fishFloatEnabled = true;
+
+function saveWall() { localStorage.setItem('break_single_wall', JSON.stringify(wallData)); }
+function saveMyReplies() { localStorage.setItem('break_single_my_replies', JSON.stringify(myRepliedIds)); }
+
+function loadAll() {
+  try {
+    const c = localStorage.getItem('break_config');
+    if (c) config = JSON.parse(c);
+    const w = localStorage.getItem('break_single_wall');
+    if (w) wallData = JSON.parse(w);
+    const r = localStorage.getItem('break_single_my_replies');
+    if (r) myRepliedIds = JSON.parse(r);
+  } catch(e) {}
+  document.getElementById('settingNick').value = config.nick;
+  document.getElementById('settingBilibiliUid').value = config.bilibiliUid;
+  document.getElementById('settingWeread').value = config.wereadUrl;
+  document.getElementById('settingFishFloat').checked = config.fishFloat !== false;
+  fishFloatEnabled = config.fishFloat !== false;
+  if (!fishFloatEnabled) document.getElementById('fishFloat').classList.add('hidden');
+  const wp = localStorage.getItem('break_wallpaper');
+  if (wp) applyWallpaper(wp);
+}
+
+function renderWall() {
+  const list = document.getElementById('wallList');
+  const colors = ['c1','c2','c3','c4','c5'];
+  list.innerHTML = '';
+  wallData.forEach(function(item, i) {
+    const div = document.createElement('div');
+    div.className = 'wall-item ' + colors[i % colors.length];
+    const rc = item.replies ? item.replies.length : 0;
+    div.innerHTML = '<div style="font-weight:500;margin-bottom:4px">' + item.text + '</div>' +
+      '<div class="author">—— ' + item.author + '</div>' +
+      '<div style="margin-top:6px;font-size:13px;color:#666;display:flex;justify-content:space-between;align-items:center">' +
+        '<span>' + (item.likes > 0 ? '👍 ' + item.likes + '  ' : '') + (rc > 0 ? '💬 ' + rc + ' 条跟帖' : '') + '</span>' +
+        (item.mine ? '<span style="color:#999;cursor:pointer;font-size:12px" onclick="event.stopPropagation();deletePost(' + item.id + ')">删除</span>' : '') +
+      '</div>';
+    div.onclick = function() { openDetail(item.id); };
+    list.appendChild(div);
+  });
+}
+
+function deletePost(id) {
+  if (!confirm('确定删除这条帖子吗？')) return;
+  wallData = wallData.filter(function(w) { return w.id !== id; });
+  saveWall();
+  renderWall();
+  renderMyPanel();
+}
+
+function openPostModal() {
+  document.getElementById('postText').value = '';
+  document.getElementById('postAnon').checked = false;
+  openModal('postModal');
+}
+function submitPost() {
+  const text = document.getElementById('postText').value.trim();
+  if (!text) return;
+  const isAnon = document.getElementById('postAnon').checked;
+  const author = isAnon ? '匿名' : (config.nick || '匿名');
+  wallData.unshift({ id: Date.now(), text: text, author: author, mine: !isAnon, likes: 0, replies: [] });
+  saveWall();
+  renderWall();
+  closeModal('postModal');
+  renderMyPanel();
+}
+
+function openDetail(id) {
+  currentDetailId = id;
+  const item = wallData.find(function(w) { return w.id === id; });
+  if (!item) return;
+  document.getElementById('detailPost').innerHTML =
+    '<div class="text">' + item.text + '</div><div class="author">—— ' + item.author + '</div>';
+  renderReplies(item);
+  document.getElementById('replyInput').value = '';
+  openModal('detailModal');
+}
+function renderReplies(item) {
+  const list = document.getElementById('replyList');
+  list.innerHTML = '';
+  if (!item.replies || item.replies.length === 0) {
+    list.innerHTML = '<div style="text-align:center;color:#aaa;padding:20px;font-size:13px">还没有跟帖，来抢沙发</div>';
+    return;
+  }
+  item.replies.forEach(function(r) {
+    const div = document.createElement('div');
+    div.className = 'reply-item';
+    div.innerHTML = r.text + '<div class="author">—— ' + r.author + '</div>';
+    list.appendChild(div);
+  });
+}
+function submitReply() {
+  const input = document.getElementById('replyInput');
+  const text = input.value.trim();
+  if (!text || !currentDetailId) return;
+  const item = wallData.find(function(w) { return w.id === currentDetailId; });
+  if (!item) return;
+  item.replies.push({ text: text, author: config.nick || '匿名' });
+  myRepliedIds.push(currentDetailId);
+  saveWall();
+  saveMyReplies();
+  renderReplies(item);
+  input.value = '';
+}
+
+function switchMyTab(tab, el) {
+  currentMyTab = tab;
+  document.querySelectorAll('.my-tab').forEach(function(t) { t.classList.remove('active'); });
+  el.classList.add('active');
+  renderMyPanel();
+}
+function renderMyPanel() {
+  const c = document.getElementById('myContent');
+  c.innerHTML = '';
+  if (currentMyTab === 'posts') {
+    const mine = wallData.filter(function(w) { return w.mine; });
+    if (mine.length === 0) {
+      c.innerHTML = '<div style="text-align:center;color:#aaa;padding:40px 0;font-size:14px">还没发过帖子</div>';
+      return;
+    }
+    mine.forEach(function(item) {
+      const div = document.createElement('div');
+      div.className = 'my-item';
+      div.style.cursor = 'pointer';
+      div.innerHTML = '<div class="text">' + item.text + '</div><div class="meta">' + item.author + ' · ' + (item.replies ? item.replies.length : 0) + ' 条跟帖 · 点击查看</div><button class="delete-btn">删除</button>';
+      div.onclick = function() { openDetail(item.id); };
+      div.querySelector('.delete-btn').onclick = function(e) { e.stopPropagation(); deletePost(item.id); };
+      c.appendChild(div);
+    });
+  } else {
+    const replied = wallData.filter(function(w) { return myRepliedIds.indexOf(w.id) !== -1; });
+    if (replied.length === 0) {
+      c.innerHTML = '<div style="text-align:center;color:#aaa;padding:40px 0;font-size:14px">还没跟过帖</div>';
+      return;
+    }
+    replied.forEach(function(item) {
+      const div = document.createElement('div');
+      div.className = 'my-item';
+      div.style.cursor = 'pointer';
+      div.innerHTML = '<div class="text">' + item.text + '</div><div class="meta">—— ' + item.author + '</div>';
+      div.onclick = function() { openDetail(item.id); };
+      c.appendChild(div);
+    });
+  }
+}
+
+let customLinks = [];
+function getCustomLinks() {
+  try { const s = localStorage.getItem('break_custom_links'); if (s) customLinks = JSON.parse(s); } catch(e) { customLinks = []; }
+}
+function saveCustomLinks() { localStorage.setItem('break_custom_links', JSON.stringify(customLinks)); }
+function getLibraryData() {
+  const favUrl = config.bilibiliUid ? 'https://space.bilibili.com/' + config.bilibiliUid + '/favlist' : 'https://www.bilibili.com/';
+  const data = {
+    "微信读书": [{ title: "我的书架", url: config.wereadUrl, source: "微信读书" }],
+    "B站": [
+      { title: "我的收藏夹", url: favUrl, source: "B站" },
+      { title: "稍后再看", url: "https://www.bilibili.com/watchlater/", source: "B站" },
+    ],
+  };
+  customLinks.forEach(function(l) {
+    if (!data[l.cat]) data[l.cat] = [];
+    data[l.cat].push({ title: l.title, url: l.url, source: l.cat, customId: l.id });
+  });
+  return data;
+}
+function openAddLinkModal() {
+  document.getElementById('linkCat').value = '';
+  document.getElementById('linkTitle').value = '';
+  document.getElementById('linkUrl').value = '';
+  openModal('addLinkModal');
+}
+function addLink() {
+  const url = document.getElementById('linkUrl').value.trim();
+  if (!url) return;
+  let title = document.getElementById('linkTitle').value.trim();
+  let cat = document.getElementById('linkCat').value.trim();
+  if (!title) { try { title = new URL(url).hostname.replace('www.', ''); } catch(e) { title = url; } }
+  if (!cat) cat = '总库';
+  customLinks.push({ id: Date.now(), cat: cat, title: title, url: url });
+  saveCustomLinks();
+  closeModal('addLinkModal');
+  renderLibrary();
+}
+function deleteCustomLink(id) {
+  customLinks = customLinks.filter(function(l) { return l.id !== id; });
+  saveCustomLinks();
+  renderLibrary();
+}
+function renderLibrary() {
+  const lib = getLibraryData();
+  const cats = Object.keys(lib);
+  const catList = document.getElementById('catList');
+  const list = document.getElementById('libraryList');
+  catList.innerHTML = ''; list.innerHTML = '';
+  cats.forEach(function(cat, i) {
+    const btn = document.createElement('button');
+    btn.className = 'cat-btn' + (i === 0 ? ' active' : '');
+    btn.textContent = cat;
+    btn.onclick = function() {
+      document.querySelectorAll('.cat-btn').forEach(function(b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      renderLibList(cat, lib);
+    };
+    catList.appendChild(btn);
+  });
+  renderLibList(cats[0], lib);
+}
+function renderLibList(cat, lib) {
+  const list = document.getElementById('libraryList');
+  list.innerHTML = '';
+  lib[cat].forEach(function(item) {
+    const div = document.createElement('div');
+    div.className = 'lib-item';
+    let html = '<div class="title">' + item.title + '</div><div class="source">' + item.source + '</div>';
+    if (item.customId) html += '<button class="delete-btn" onclick="event.stopPropagation();deleteCustomLink(' + item.customId + ')">删除</button>';
+    div.innerHTML = html;
+    div.onclick = function() { window.open(item.url, '_blank'); };
+    list.appendChild(div);
+  });
+}
+
+function saveSettings() {
+  config.nick = document.getElementById('settingNick').value || '匿名';
+  config.bilibiliUid = document.getElementById('settingBilibiliUid').value;
+  config.wereadUrl = document.getElementById('settingWeread').value;
+  config.fishFloat = document.getElementById('settingFishFloat').checked;
+  localStorage.setItem('break_config', JSON.stringify(config));
+  fishFloatEnabled = config.fishFloat;
+  toggleFishFloat(config.fishFloat);
+  const fileInput = document.getElementById('settingWallpaper');
+  if (fileInput.files && fileInput.files[0]) {
+    const reader = new FileReader();
+    reader.onload = function(e) { localStorage.setItem('break_wallpaper', e.target.result); applyWallpaper(e.target.result); };
+    reader.readAsDataURL(fileInput.files[0]);
+  }
+  renderLibrary();
+  togglePanel('settings');
+  alert('设置已保存');
+}
+
+let fishStartTime = Date.now();
+let fishTimerInterval = null;
+function toggleFishFloat(show) {
+  const el = document.getElementById('fishFloat');
+  if (show) { fishStartTime = Date.now(); el.classList.remove('hidden'); startFishTimer(); }
+  else { el.classList.add('hidden'); stopFishTimer(); }
+}
+function startFishTimer() {
+  stopFishTimer();
+  fishTimerInterval = setInterval(function() {
+    const s = Math.floor((Date.now() - fishStartTime) / 1000);
+    const m = Math.floor(s / 60); const sec = s % 60;
+    document.getElementById('fishTime').textContent = (m < 10 ? '0' : '') + m + ':' + (sec < 10 ? '0' : '') + sec;
+  }, 1000);
+}
+function stopFishTimer() { if (fishTimerInterval) { clearInterval(fishTimerInterval); fishTimerInterval = null; } }
+
+function handleFullscreen() {
+  const el = document.getElementById('fishFloat');
+  if (document.fullscreenElement) el.classList.add('hidden');
+  else if (fishFloatEnabled) el.classList.remove('hidden');
+}
+document.addEventListener('fullscreenchange', handleFullscreen);
+
+(function() {
+  const el = document.getElementById('fishFloat');
+  let dragging = false, ox = 0, oy = 0;
+  el.addEventListener('mousedown', function(e) {
+    if (e.target.classList.contains('close-float')) return;
+    dragging = true;
+    const r = el.getBoundingClientRect();
+    ox = e.clientX - r.left; oy = e.clientY - r.top;
+    el.style.right = 'auto'; el.style.bottom = 'auto';
+  });
+  document.addEventListener('mousemove', function(e) {
+    if (!dragging) return;
+    el.style.left = (e.clientX - ox) + 'px';
+    el.style.top = (e.clientY - oy) + 'px';
+  });
+  document.addEventListener('mouseup', function() { dragging = false; });
+})();
+
+function applyWallpaper(dataUrl) {
+  if (dataUrl) document.querySelector('.main').style.background = 'url(' + dataUrl + ') center/cover';
+  else document.querySelector('.main').style.background = 'linear-gradient(135deg, #fafaf7 0%, #f0ede6 100%)';
+}
+function resetWallpaper() { localStorage.removeItem('break_wallpaper'); applyWallpaper(null); }
+
+function togglePanel(name) { document.getElementById(name).classList.toggle('open'); }
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function randomBreak() {
+  const el = document.getElementById('mainText');
+  el.style.opacity = 0;
+  setTimeout(function() { el.textContent = breaks[Math.floor(Math.random() * breaks.length)]; el.style.opacity = 1; }, 200);
+}
+
+loadAll();
+getCustomLinks();
+renderWall();
+renderLibrary();
+renderMyPanel();
+startFishTimer();
+</script>
+</body>
+</html>
